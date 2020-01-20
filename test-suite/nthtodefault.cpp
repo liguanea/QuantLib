@@ -88,7 +88,7 @@ namespace {
         { 6, {   3,   8,   3,   8 } },
         { 7, {   1,   5,   1,   5 } },
         { 8, {   0,   3,   0,   4 } },
-        { 9, {   0,   2,   0,   2 } },
+        { 9, {   0,   2,   0,   0 } },
         {10, {   0,   1,   0,   1 } }
     };
 
@@ -177,6 +177,10 @@ void NthToDefaultTest::testGauss() {
     //        std::vector<Real>(names, recovery), numSimulations, 1.e-6, 
     //        2863311530));
 
+
+    vector<Handle<DefaultProbabilityTermStructure> > singleProbability;
+    singleProbability.push_back (probabilities[0]);
+
     // Set up pool and basket
     std::vector<std::string> namesIds;
     for(Size i=0; i<names; i++)
@@ -203,9 +207,13 @@ void NthToDefaultTest::testGauss() {
 
     ext::shared_ptr<Basket> basket(new Basket(asofDate, namesIds, 
         std::vector<Real>(names, namesNotional/names), thePool, 0., 1.));
+    basket->setLossModel(copula);
+
 
     ext::shared_ptr<PricingEngine> engine(
         new IntegralNtdEngine(timeUnit, yieldHandle));
+
+    Real diff, maxDiff = 0;
 
     vector<NthToDefault> ntd;
     for (Size i = 1; i <= probabilities.size(); i++) {
@@ -217,10 +225,6 @@ void NthToDefaultTest::testGauss() {
     QL_REQUIRE (LENGTH(hwCorrelation) == 3,
                 "correlation length does not match");
 
-    Real diff, maxDiff = 0;
-
-    basket->setLossModel(copula);
-    
     for (Size j = 0; j < LENGTH(hwCorrelation); j++) {
         simpleQuote->setValue (hwCorrelation[j]);
         for (Size i = 0; i < ntd.size(); i++) {
@@ -239,23 +243,24 @@ void NthToDefaultTest::testGauss() {
 }
 
 
-void NthToDefaultTest::testStudent() {
+void NthToDefaultTest::testGaussStudent() {
     #ifndef QL_PATCH_SOLARIS
     BOOST_TEST_MESSAGE("Testing nth-to-default against Hull-White values "
-                       "with Student copula...");
+                       "with Gaussian and Student copula...");
 
     SavedSettings backup;
 
     /*************************
      * Tolerances
      */
-    Real relTolerance = 0.017; // relative difference
+    Real relTolerance = 0.015; // relative difference
     Real absTolerance = 1; // absolute difference in bp
 
     Period timeUnit = 1*Weeks; // required to reach accuracy
 
     Size names = 10;
-    QL_REQUIRE (LENGTH(hwDataDist) == names, "hwDataDist length does not match");
+    QL_REQUIRE (LENGTH(hwDataDist) == names,
+                "hwDataDist length does not match");
 
     Real rate = 0.05;
     DayCounter dc = Actual365Fixed();
@@ -264,8 +269,6 @@ void NthToDefaultTest::testStudent() {
 
     Real recovery = 0.4;
     vector<Real> lambda (names, 0.01);
-
-    Real namesNotional = 100.0;
 
     Schedule schedule = MakeSchedule().from(Date (1, September, 2006))
                                       .to(Date (1, September, 2011))
@@ -282,8 +285,8 @@ void NthToDefaultTest::testStudent() {
     gridDates.push_back (TARGET().advance (asofDate, Period (5, Years)));
     gridDates.push_back (TARGET().advance (asofDate, Period (7, Years)));
 
-    ext::shared_ptr<YieldTermStructure> yieldPtr (
-                                new FlatForward (asofDate, rate, dc, cmp));
+    ext::shared_ptr<YieldTermStructure> yieldPtr (new FlatForward (asofDate, 
+        rate, dc, cmp));
     Handle<YieldTermStructure> yieldHandle (yieldPtr);
 
     vector<Handle<DefaultProbabilityTermStructure> > probabilities;
@@ -295,12 +298,17 @@ void NthToDefaultTest::testStudent() {
         probabilities.push_back(Handle<DefaultProbabilityTermStructure>(ptr));
     }
 
-    ext::shared_ptr<SimpleQuote> simpleQuote (new SimpleQuote(0.0));
+    ext::shared_ptr<SimpleQuote> simpleQuote (new SimpleQuote(0.3));
     Handle<Quote> correlationHandle (simpleQuote);
 
+    ext::shared_ptr<DefaultLossModel> gaussianCopula( new 
+        ConstantLossModel<GaussianCopulaPolicy>( correlationHandle, 
+        std::vector<Real>(names, recovery), 
+        LatentModelIntegrationType::GaussianQuadrature, names,
+        GaussianCopulaPolicy::initTraits()));
     TCopulaPolicy::initTraits iniT;
     iniT.tOrders = std::vector<QuantLib::Integer>(2,5);
-    ext::shared_ptr<DefaultLossModel> copula( new 
+    ext::shared_ptr<DefaultLossModel> studentCopula( new 
         ConstantLossModel<TCopulaPolicy>( correlationHandle, 
         std::vector<Real>(names, recovery), 
         LatentModelIntegrationType::GaussianQuadrature, names, iniT));
@@ -330,7 +338,7 @@ void NthToDefaultTest::testStudent() {
         NorthAmericaCorpDefaultKey(EURCurrency(), SeniorSec, Period(), 1.));
 
     ext::shared_ptr<Basket> basket(new Basket(asofDate, namesIds, 
-        std::vector<Real>(names, namesNotional/names), thePool, 0., 1.));
+        std::vector<Real>(names, 100./names), thePool, 0., 1.));
 
     ext::shared_ptr<PricingEngine> engine(
         new IntegralNtdEngine(timeUnit, yieldHandle));
@@ -338,7 +346,7 @@ void NthToDefaultTest::testStudent() {
     vector<NthToDefault> ntd;
     for (Size i = 1; i <= probabilities.size(); i++) {
         ntd.push_back (NthToDefault (basket, i, Protection::Seller, 
-            schedule, 0.0, 0.02, Actual360(), namesNotional*names, true));
+            schedule, 0.0, 0.02, Actual360(), 100.*names, true));
         ntd.back().setPricingEngine(engine);
     }
 
@@ -347,40 +355,34 @@ void NthToDefaultTest::testStudent() {
 
     Real maxDiff = 0;
 
-    basket->setLossModel(copula);
-
-    // This is the necessary code, but a proper hwData for the t copula is needed.
-    // Real diff;
-    // for (Size j = 0; j < LENGTH(hwCorrelation); j++) {
-    //     simpleQuote->setValue (hwCorrelation[j]);
-    //     for (Size i = 0; i < ntd.size(); i++) {
-    //         QL_REQUIRE (ntd[i].rank() == hwData[i].rank, "rank does not match");
-    //         QL_REQUIRE (LENGTH(hwCorrelation) == LENGTH(hwData[i].spread),
-    //                     "vector length does not match");
-    //         diff = 1e4 * ntd[i].fairPremium() - hwData[i].spread[j];
-    //         maxDiff = max (maxDiff, fabs (diff));
-    //         BOOST_CHECK_MESSAGE (fabs(diff/hwData[i].spread[j]) < relTolerance
-    //                              || fabs(diff) < absTolerance,
-    //                              "tolerance2 " << relTolerance << "|"
-    //                              << absTolerance << " exceeded";
-    //     }
-    // }
-
-    //instead of this BEGIN
     simpleQuote->setValue (0.3);
-    
+
+    basket->setLossModel(gaussianCopula);
+
+    for (Size i = 0; i < ntd.size(); i++) {
+        QL_REQUIRE (ntd[i].rank() == hwDataDist[i].rank, "rank does not match");
+
+        Real diff = 1e4 * ntd[i].fairPremium() - hwDataDist[i].spread[0];
+        maxDiff = max (maxDiff, fabs (diff));
+        BOOST_CHECK_MESSAGE (fabs(diff / hwDataDist[i].spread[0]) ||
+                             fabs(diff) < absTolerance,
+                             "tolerance " << relTolerance << "|"
+                             << absTolerance << " exceeded");
+    }
+
+    basket->setLossModel(studentCopula);
+
+    maxDiff = 0;
     for (Size i = 0; i < ntd.size(); i++) {
         QL_REQUIRE (ntd[i].rank() == hwDataDist[i].rank, "rank does not match");
 
         Real diff = 1e4 * ntd[i].fairPremium() - hwDataDist[i].spread[3];
         maxDiff = max (maxDiff, fabs (diff));
-        BOOST_CHECK_MESSAGE (fabs(diff / hwDataDist[i].spread[3]) < relTolerance ||
+        BOOST_CHECK_MESSAGE (fabs(diff / hwDataDist[i].spread[3]) ||
                              fabs(diff) < absTolerance,
                              "tolerance " << relTolerance << "|"
-                             << absTolerance << " exceeded" << i << "|"
-                             << abs(diff) << "|" << hwDataDist[i].spread[3]);
+                             << absTolerance << " exceeded");
     }
-    //END
     #endif
 }
 
@@ -389,8 +391,9 @@ test_suite* NthToDefaultTest::suite(SpeedLevel speed) {
     #ifndef QL_PATCH_SOLARIS
     if (speed == Slow) {
         suite->add(QUANTLIB_TEST_CASE(&NthToDefaultTest::testGauss));
-        suite->add(QUANTLIB_TEST_CASE(&NthToDefaultTest::testStudent));
+        suite->add(QUANTLIB_TEST_CASE(&NthToDefaultTest::testGaussStudent));
     }
     #endif
     return suite;
 }
+

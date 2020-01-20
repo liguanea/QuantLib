@@ -6,7 +6,6 @@ this_include_HEADERS = \
 	all.hpp \
 	argentina.hpp \
 	australia.hpp \
-	austria.hpp \
 	bespokecalendar.hpp \
 	botswana.hpp \
 	brazil.hpp \
@@ -52,7 +51,6 @@ this_include_HEADERS = \
 cpp_files = \
 	argentina.cpp \
 	australia.cpp \
-	austria.cpp \
 	bespokecalendar.cpp \
 	botswana.cpp \
 	brazil.cpp \

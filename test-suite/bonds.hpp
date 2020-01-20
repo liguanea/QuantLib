@@ -39,7 +39,6 @@ class BondTest {
     static void testExCouponGilt();
     static void testExCouponAustralianBond();
     static void testBondFromScheduleWithDateVector();
-    static void testFixedRateBondWithArbitrarySchedule();
     static void testThirty360BondWithSettlementOn31st();
     static boost::unit_test_framework::test_suite* suite();
 };

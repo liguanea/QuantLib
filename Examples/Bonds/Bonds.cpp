@@ -214,6 +214,8 @@ int main(int, char* []) {
          DayCounter termStructureDayCounter =
              ActualActual(ActualActual::ISDA);
 
+         double tolerance = 1.0e-15;
+
          // A depo-bond curve
          std::vector<ext::shared_ptr<RateHelper> > bondInstruments;
 
@@ -230,7 +232,8 @@ int main(int, char* []) {
          ext::shared_ptr<YieldTermStructure> bondDiscountingTermStructure(
                  new PiecewiseYieldCurve<Discount,LogLinear>(
                          settlementDate, bondInstruments,
-                         termStructureDayCounter));
+                         termStructureDayCounter,
+                         tolerance));
 
          // Building of the Libor forecasting curve
          // deposits
@@ -371,7 +374,8 @@ int main(int, char* []) {
          ext::shared_ptr<YieldTermStructure> depoSwapTermStructure(
                  new PiecewiseYieldCurve<Discount,LogLinear>(
                          settlementDate, depoSwapInstruments,
-                         termStructureDayCounter));
+                         termStructureDayCounter,
+                         tolerance));
 
          // Term structures that will be used for pricing:
          // the one used for discounting cash flows

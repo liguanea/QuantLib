@@ -88,8 +88,7 @@ namespace QuantLib {
         typedef typename Curve::interpolator_type Interpolator;
       public:
         LocalBootstrap(Size localisation = 2,
-                       bool forcePositive = true,
-                       Real accuracy = Null<Real>());
+                       bool forcePositive = true);
         void setup(Curve* ts);
         void calculate() const;
 
@@ -98,7 +97,6 @@ namespace QuantLib {
         Curve* ts_;
         Size localisation_;
         bool forcePositive_;
-        Real accuracy_;
     };
 
 
@@ -107,10 +105,9 @@ namespace QuantLib {
 
     template <class Curve>
     LocalBootstrap<Curve>::LocalBootstrap(Size localisation,
-                                          bool forcePositive,
-                                          Real accuracy)
+                                          bool forcePositive)
     : validCurve_(false), ts_(0), localisation_(localisation),
-      forcePositive_(forcePositive), accuracy_(accuracy)
+      forcePositive_(forcePositive)
     {}
 
     template <class Curve>
@@ -187,12 +184,10 @@ namespace QuantLib {
                 ts_->data_[i+1] = ts_->data_[i];
         }
 
-        Real accuracy = accuracy_ != Null<Real>() ? accuracy_ : ts_->accuracy_;
-
-        LevenbergMarquardt solver(accuracy,
-                                  accuracy,
-                                  accuracy);
-        EndCriteria endCriteria(100, 10, 0.00, accuracy, 0.00);
+        LevenbergMarquardt solver(ts_->accuracy_,
+                                  ts_->accuracy_,
+                                  ts_->accuracy_);
+        EndCriteria endCriteria(100, 10, 0.00, ts_->accuracy_, 0.00);
         PositiveConstraint posConstraint;
         NoConstraint noConstraint;
         Constraint& solverConstraint = forcePositive_ ?

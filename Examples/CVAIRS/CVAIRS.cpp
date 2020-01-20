@@ -88,7 +88,8 @@ int main(int, char* []) {
 
         ext::shared_ptr<YieldTermStructure> swapTS(
             new PiecewiseYieldCurve<Discount,LogLinear>(
-             2, TARGET(), swapHelpers, ActualActual(ActualActual::ISDA)));
+             2, TARGET(), swapHelpers, ActualActual(ActualActual::ISDA), 
+             1.0e-12));
         swapTS->enableExtrapolation();
 
         ext::shared_ptr<PricingEngine> riskFreeEngine(

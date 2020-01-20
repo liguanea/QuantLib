@@ -285,7 +285,7 @@ namespace QuantLib {
                 modelPrice += cf[k]->amount() *
                                     fittingMethod_->discountFunction(x, tenor);
             }
-            if (helper->priceType() == Bond::Price::Clean)
+            if (helper->useCleanPrice())
                 modelPrice -= bond->accruedAmount(bondSettlement);
 
             // adjust price (NPV) for forward settlement

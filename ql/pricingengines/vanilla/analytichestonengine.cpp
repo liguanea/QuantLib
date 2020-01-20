@@ -529,8 +529,7 @@ namespace QuantLib {
             }
           }
           break;
-          case AndersenPiterbarg:
-          case AndersenPiterbargOptCV: {
+          case AndersenPiterbarg: {
             const Real c_inf =
                 std::sqrt(1.0-rho*rho)*(v0 + kappa*theta*term)/sigma;
 
@@ -542,10 +541,8 @@ namespace QuantLib {
             const Real uM = Integration::andersenPiterbargIntegrationLimit(
                 c_inf, epsilon, v0, term);
 
-            const Real vAvg = (cpxLog == AndersenPiterbarg)
-                ? (1-std::exp(-kappa*term))*(v0-theta)/(kappa*term) + theta
-                : -8.0*std::log(enginePtr->chF(
-                        std::complex<Real>(0, -0.5), term).real())/term;
+            const Real vAvg
+                = (1-std::exp(-kappa*term))*(v0-theta)/(kappa*term) + theta;
 
             const Real bsPrice
                 = BlackCalculator(Option::Call, strikePrice,

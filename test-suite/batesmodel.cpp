@@ -469,6 +469,7 @@ void BatesModelTest::testDAXCalibration() {
             Period maturity((int)((t[m]+3)/7.), Weeks); // round to weeks
 
             // this is the calibration helper for the bates models
+            // FLOATING_POINT_EXCEPTION
             options.push_back(ext::shared_ptr<BlackCalibrationHelper>(
                     new HestonModelHelper(maturity, calendar,
                                           s0->value(), strike[s], vol,
@@ -480,8 +481,8 @@ void BatesModelTest::testDAXCalibration() {
 
     // check calibration engine
     LevenbergMarquardt om;
-    batesModel->calibrate(std::vector<ext::shared_ptr<CalibrationHelper> >(options.begin(), options.end()),
-                          om, EndCriteria(400, 40, 1.0e-8, 1.0e-8, 1.0e-8));
+    batesModel->calibrate(options, om,
+                          EndCriteria(400, 40, 1.0e-8, 1.0e-8, 1.0e-8));
 
     Real expected = 36.6;
     Real calculated = getCalibrationError(options);

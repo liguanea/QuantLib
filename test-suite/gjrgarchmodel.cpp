@@ -249,7 +249,21 @@ void GJRGARCHModelTest::testDAXCalibration() {
     Real strike[] = { 3400,3600,3800,4000,4200,4400,
                       4500,4600,4800,5000,5200,5400,5600 };
 
-    std::vector<ext::shared_ptr<CalibrationHelper> > options;
+    std::vector<ext::shared_ptr<BlackCalibrationHelper> > options;
+
+    for (Size s = 3; s < 10; ++s) {
+        for (Size m = 0; m < 3; ++m) {
+            Handle<Quote> vol(ext::shared_ptr<Quote>(
+                                                  new SimpleQuote(v[s*8+m])));
+
+            Period maturity((int)((t[m]+3)/7.), Weeks); // round to weeks
+            options.push_back(ext::shared_ptr<BlackCalibrationHelper>(
+                    new HestonModelHelper(maturity, calendar,
+                                          s0->value(), strike[s], vol,
+                                          riskFreeTS, dividendTS, 
+                                          BlackCalibrationHelper::ImpliedVolError)));
+        }
+    }
 
     const Real omega = 2.0e-6;
     const Real alpha = 0.024;
@@ -270,21 +284,8 @@ void GJRGARCHModelTest::testDAXCalibration() {
     ext::shared_ptr<PricingEngine> engine(
         new AnalyticGJRGARCHEngine(ext::shared_ptr<GJRGARCHModel>(model)));
 
-    for (Size s = 3; s < 10; ++s) {
-        for (Size m = 0; m < 3; ++m) {
-            Handle<Quote> vol(ext::shared_ptr<Quote>(
-                                                  new SimpleQuote(v[s*8+m])));
-
-            Period maturity((int)((t[m]+3)/7.), Weeks); // round to weeks
-            ext::shared_ptr<BlackCalibrationHelper> option(
-                    new HestonModelHelper(maturity, calendar,
-                                          s0->value(), strike[s], vol,
-                                          riskFreeTS, dividendTS,
-                                          BlackCalibrationHelper::ImpliedVolError));
-            option->setPricingEngine(engine);
-            options.push_back(option);
-        }
-    }
+    for (i = 0; i < options.size(); ++i)
+        options[i]->setPricingEngine(engine);
 
     Simplex om(0.05);
     model->calibrate(options, om,
@@ -316,3 +317,4 @@ test_suite* GJRGARCHModelTest::suite(SpeedLevel speed) {
 
     return suite;
 }
+

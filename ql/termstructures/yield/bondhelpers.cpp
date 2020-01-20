@@ -29,8 +29,8 @@ namespace QuantLib {
 
     BondHelper::BondHelper(const Handle<Quote>& price,
                            const ext::shared_ptr<Bond>& bond,
-                           const Bond::Price::Type priceType)
-    : RateHelper(price), bond_(ext::make_shared<Bond>(*bond)), priceType_(priceType) {
+                           const bool useCleanPrice)
+    : RateHelper(price), bond_(ext::make_shared<Bond>(*bond)) {
 
         // the bond's last cashflow date, which can be later than
         // bond's maturity date because of adjustment
@@ -39,22 +39,8 @@ namespace QuantLib {
 
         bond_->setPricingEngine(
              ext::make_shared<DiscountingBondEngine>(termStructureHandle_));
-    }
 
-    BondHelper::BondHelper(const Handle<Quote>& price,
-                           const ext::shared_ptr<Bond>& bond,
-                           const bool useCleanPrice)
-        : RateHelper(price), bond_(ext::make_shared<Bond>(*bond)) {
-
-        // the bond's last cashflow date, which can be later than
-        // bond's maturity date because of adjustment
-        latestDate_ = bond_->cashflows().back()->date();
-        earliestDate_ = bond_->nextCashFlowDate();
-
-        bond_->setPricingEngine(
-            ext::make_shared<DiscountingBondEngine>(termStructureHandle_));
-
-        priceType_ = useCleanPrice ? Bond::Price::Clean : Bond::Price::Dirty;
+        useCleanPrice_ = useCleanPrice;
     }
 
     void BondHelper::setTermStructure(YieldTermStructure* t) {
@@ -70,19 +56,7 @@ namespace QuantLib {
         QL_REQUIRE(termStructure_ != 0, "term structure not set");
         // we didn't register as observers - force calculation
         bond_->recalculate();
-
-        switch (priceType_) {
-            case Bond::Price::Clean:
-                return bond_->cleanPrice();
-                break;
-
-            case Bond::Price::Dirty:
-                return bond_->dirtyPrice();
-                break;
-
-            default:
-                QL_FAIL("This price type isn't implemented.");
-        }
+        return useCleanPrice_ ? bond_->cleanPrice() : bond_->dirtyPrice();
     }
 
     void BondHelper::accept(AcyclicVisitor& v) {
@@ -109,33 +83,6 @@ namespace QuantLib {
                                     const Calendar& exCouponCalendar,
                                     const BusinessDayConvention exCouponConvention,
                                     bool exCouponEndOfMonth,
-                                    const Bond::Price::Type priceType)
-    : BondHelper(price,
-                 ext::shared_ptr<Bond>(
-                     new FixedRateBond(settlementDays, faceAmount, schedule,
-                                       coupons, dayCounter, paymentConvention,
-                                       redemption, issueDate, paymentCalendar,
-                                       exCouponPeriod, exCouponCalendar,
-                                       exCouponConvention, exCouponEndOfMonth)),
-                 priceType) {
-        fixedRateBond_ = ext::dynamic_pointer_cast<FixedRateBond>(bond_);
-    }
-
-    FixedRateBondHelper::FixedRateBondHelper(
-                                    const Handle<Quote>& price,
-                                    Natural settlementDays,
-                                    Real faceAmount,
-                                    const Schedule& schedule,
-                                    const std::vector<Rate>& coupons,
-                                    const DayCounter& dayCounter,
-                                    BusinessDayConvention paymentConvention,
-                                    Real redemption,
-                                    const Date& issueDate,
-                                    const Calendar& paymentCalendar,
-                                    const Period& exCouponPeriod,
-                                    const Calendar& exCouponCalendar,
-                                    const BusinessDayConvention exCouponConvention,
-                                    bool exCouponEndOfMonth,
                                     const bool useCleanPrice)
     : BondHelper(price,
                  ext::shared_ptr<Bond>(
@@ -144,7 +91,7 @@ namespace QuantLib {
                                        redemption, issueDate, paymentCalendar,
                                        exCouponPeriod, exCouponCalendar,
                                        exCouponConvention, exCouponEndOfMonth)),
-                 useCleanPrice ? Bond::Price::Clean : Bond::Price::Dirty) {
+                 useCleanPrice) {
         fixedRateBond_ = ext::dynamic_pointer_cast<FixedRateBond>(bond_);
     }
 
@@ -176,46 +123,15 @@ namespace QuantLib {
                             const Calendar& exCouponCalendar,
                             const BusinessDayConvention exCouponConvention,
                             bool exCouponEndOfMonth,
-                            const Bond::Price::Type priceType)
-    : BondHelper(price,
-                 ext::shared_ptr<Bond>(
-                     new CPIBond(settlementDays, faceAmount, growthOnly, baseCPI,
-                                       observationLag, cpiIndex, observationInterpolation,
-                                       schedule, fixedRate, accrualDayCounter, paymentConvention,
-                                       issueDate, paymentCalendar, exCouponPeriod, exCouponCalendar,
-                                       exCouponConvention, exCouponEndOfMonth)),
-                 priceType) {
-        cpiBond_ = ext::dynamic_pointer_cast<CPIBond>(bond_);
-    }
-
-    CPIBondHelper::CPIBondHelper(
-                            const Handle<Quote>& price,
-                            Natural settlementDays,
-                            Real faceAmount,
-                            const bool growthOnly,
-                            Real baseCPI,
-                            const Period& observationLag,
-                            const ext::shared_ptr<ZeroInflationIndex>& cpiIndex,
-                            CPI::InterpolationType observationInterpolation,
-                            const Schedule& schedule,
-                            const std::vector<Rate>& fixedRate,
-                            const DayCounter& accrualDayCounter,
-                            BusinessDayConvention paymentConvention,
-                            const Date& issueDate,
-                            const Calendar& paymentCalendar,
-                            const Period& exCouponPeriod,
-                            const Calendar& exCouponCalendar,
-                            const BusinessDayConvention exCouponConvention,
-                            bool exCouponEndOfMonth,
                             const bool useCleanPrice)
     : BondHelper(price,
                  ext::shared_ptr<Bond>(
-                     new CPIBond(settlementDays, faceAmount, growthOnly, baseCPI,
+                     new CPIBond(settlementDays, faceAmount, growthOnly, baseCPI, 
                                        observationLag, cpiIndex, observationInterpolation,
                                        schedule, fixedRate, accrualDayCounter, paymentConvention,
                                        issueDate, paymentCalendar, exCouponPeriod, exCouponCalendar,
                                        exCouponConvention, exCouponEndOfMonth)),
-                 useCleanPrice ? Bond::Price::Clean : Bond::Price::Dirty) {
+                 useCleanPrice) {
         cpiBond_ = ext::dynamic_pointer_cast<CPIBond>(bond_);
     }
 
@@ -227,5 +143,4 @@ namespace QuantLib {
         else
             BootstrapHelper<YieldTermStructure>::accept(v);
     }
-
 }

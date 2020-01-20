@@ -2,7 +2,6 @@
 
 /*
  Copyright (C) 2018 Roy Zywina
- Copyright (C) 2019 Eisuke Tani
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -35,17 +34,14 @@ namespace QuantLib {
     SOFR futures and Sonia futures available on CME and ICE exchanges.
     */
     class OvernightIndexFuture : public Forward {
-      public:
-        enum NettingType { Averaging, Compounding };
-
+    public:
         OvernightIndexFuture(
             const ext::shared_ptr<OvernightIndex>& overnightIndex,
             const ext::shared_ptr<Payoff>& payoff,
             const Date& valueDate,
             const Date& maturityDate,
             const Handle<YieldTermStructure>& discountCurve,
-            const Handle<Quote>& convexityAdjustment = Handle<Quote>(),
-            const NettingType subPeriodsNettingType = Compounding);
+            const Handle<Quote>& convexityAdjustment = Handle<Quote>());
 
         //! returns spot value/price of an underlying financial instrument
         virtual Real spotValue() const;
@@ -57,12 +53,9 @@ namespace QuantLib {
 
         Real convexityAdjustment() const;
 
-      private:
-        Real averagedSpotValue() const;
-        Real compoundedSpotValue() const;
+    protected:
         ext::shared_ptr<OvernightIndex> overnightIndex_;
         Handle<Quote> convexityAdjustment_;
-        NettingType subPeriodsNettingType_;
     };
 
 }
